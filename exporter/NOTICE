@@ -1,0 +1,12 @@
+GPU Exporter for Unified Resource Hub
+
+This source distribution is derived from NVIDIA DCGM Exporter
+(https://github.com/NVIDIA/dcgm-exporter), licensed under Apache-2.0.
+Original copyright notices appear in the source files. See LICENSE and
+Copyright.txt for the license and third-party notices accompanying the source.
+
+Project changes include the local module layout, per-scrape collection and
+serialization, collection timing and GPU P-state metadata, and optional HTTP
+request logging. This edition retains the runtime and its relevant tests;
+ordinary source comments and inactive sample counters have been omitted.
+Go module dependencies are fetched separately under their respective licenses.
