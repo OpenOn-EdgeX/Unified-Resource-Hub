@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unified Resource Hub | Cluster overview</title>
+  <style>
+    :root {color-scheme:light dark;--ink:#172b2d;--muted:#495f61;--accent:#08665b;--paper:#fff;--base:#f2f6f4;--line:#cddbd6;--warn:#a23b17;font:16px/1.5 system-ui,sans-serif}
+    @media(prefers-color-scheme:dark){:root{--ink:#e3eeea;--muted:#aec0b8;--accent:#7ad3b8;--paper:#162321;--base:#101b19;--line:#344a43;--warn:#ffb08e}}
+    *{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--base)}main{max-width:70rem;margin:auto;padding:clamp(1rem,4vw,3rem)}header{border-bottom:2px solid var(--ink);padding-bottom:1rem}h1,h2,h3,p{margin:0}h1{font-size:clamp(1.8rem,5vw,3rem);line-height:1.12;letter-spacing:-.035em}h2{font-size:1.25rem;margin:2rem 0 .6rem}h3{font-size:1rem;color:var(--accent)}
+    .brand{color:var(--accent);text-transform:uppercase;letter-spacing:.16em;font-size:.75rem;font-weight:750;margin-bottom:.45rem}.toolbar{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-top:1rem}button{font:inherit;background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:.4rem .9rem;border-radius:.35rem;cursor:pointer}button:disabled{opacity:.65}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr));gap:.7rem}article,.panel{min-width:0;background:var(--paper);border:1px solid var(--line);padding:1rem;border-radius:.4rem}.value{font-size:1.6rem;font-weight:670;font-variant-numeric:tabular-nums}.sub,.status{color:var(--muted);font-size:.87rem}.issue{color:var(--warn)}.metrics div{display:flex;justify-content:space-between;gap:1rem;border-top:1px solid var(--line);padding:.3rem 0}.metrics strong{font-variant-numeric:tabular-nums}
+    .table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;margin-top:.75rem}td,th{text-align:left;vertical-align:top;padding:.45rem;border-bottom:1px solid var(--line);font-size:.875rem;overflow-wrap:anywhere}th,caption{color:var(--muted)}caption{text-align:left;font-size:.875rem}
+  </style>
+  <script type="module" src="./dashboard.js"></script>
+</head>
+<body><main>
+  <header><p class="brand">Unified Resource Hub</p><h1>Cluster overview</h1><div class="toolbar"><button type="button" id="refresh">Refresh</button><span class="status" id="status" role="status">Loading dashboard…</span></div></header>
+  <noscript>JavaScript is required to load monitoring data.</noscript>
+  <section><h2>Resource inventory</h2><div class="grid" id="inventory"></div></section>
+  <section><h2>Utilization</h2><div class="grid" id="metrics"></div></section>
+  <section><h2>Cluster events</h2><div class="panel" id="events"></div></section>
+</main></body></html>
