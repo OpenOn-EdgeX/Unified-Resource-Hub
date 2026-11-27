@@ -2,7 +2,7 @@ from http import HTTPStatus
 from app.repository import k8s_repo
 from app.repository import prom_repo
 from utils.parse_utils import format_bytes_iec, format_bytes_si
-from utils.parse_utils import format_number
+from utils.parse_utils import add_quantities, format_number
 from utils.time_utils import format_relative_time
 from utils.pod_utils import get_pod_info, build_pod_metric_map
 from utils.event_utils import build_event_summary
@@ -269,10 +269,10 @@ def workload_list(namespace_name: str):
             restarts = sum(cs.restart_count for cs in (p.status.container_statuses or []))
 
             metric = pod_metric_map.get(
-                (pod_ns, p.metadata.name), {"cpu": 0, "memory": 0}
+                (pod_ns, p.metadata.name), {}
             )
-            cpu = metric["cpu"]
-            mem = metric["memory"]
+            cpu = metric.get("cpu")
+            mem = metric.get("memory")
 
             row = None
             if owner.kind == "ReplicaSet":
@@ -290,8 +290,8 @@ def workload_list(namespace_name: str):
 
             row["restarts"] += restarts
             row["pods"].append(p.metadata.name)
-            row["cpu"] += cpu
-            row["memory"] += mem
+            row["cpu"] = add_quantities(row["cpu"], cpu)
+            row["memory"] = add_quantities(row["memory"], mem)
 
         return {
             "deployment": dep_list,
@@ -448,10 +448,10 @@ def pod_list(namespace_name: str, workload_name: str):
                 continue
 
             metric = pod_metric_map.get(
-                (p.metadata.namespace, p.metadata.name), {"cpu": 0, "memory": 0}
+                (p.metadata.namespace, p.metadata.name), {}
             )
-            cpu = metric["cpu"]
-            mem = metric["memory"]
+            cpu = metric.get("cpu")
+            mem = metric.get("memory")
 
             sidecars = sidecar_lookup.get(p.metadata.uid, frozenset())
             pod_info = get_pod_info(p, sidecar_names=sidecars)
@@ -474,7 +474,7 @@ def pod_list(namespace_name: str, workload_name: str):
                 "age": age,
                 "node": node,
                 "cpu": cpu,
-                "memory": format_bytes_iec(mem)
+                "memory": format_bytes_iec(mem) if mem is not None else None
             })
 
         return pod_list

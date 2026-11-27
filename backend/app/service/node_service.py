@@ -482,15 +482,15 @@ def running_pods(node_name: str):
 
             age = format_relative_time(pod.metadata.creation_timestamp)
 
-            metric = metrics_map.get((ns, name), {"cpu": 0.0, "memory": 0.0})
-            cpu_usage = metric["cpu"]
-            mem_usage = metric["memory"]
+            metric = metrics_map.get((ns, name), {})
+            cpu_usage = metric.get("cpu")
+            mem_usage = metric.get("memory")
 
             result.append({
                 "pod_name": name,
                 "namespace": ns,
-                "cpu_usage": round(cpu_usage, 3),
-                "memory_usage": format_bytes_iec(mem_usage),
+                "cpu_usage": round(cpu_usage, 3) if cpu_usage is not None else None,
+                "memory_usage": format_bytes_iec(mem_usage) if mem_usage is not None else None,
                 "ready": ready_str,
                 "status": status,
                 "restarts": restarts,

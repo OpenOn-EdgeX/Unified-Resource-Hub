@@ -6,7 +6,7 @@ from app.exceptions import ApiException
 from app.repository.prom_repo import instant, last_hour, history
 from app.query import cluster_query as cq
 from app.query import gpu_query as gq
-from utils.parse_utils import parse_usage, to_display_value
+from utils.parse_utils import quantity_total, to_display_value
 from utils.event_utils import build_event_summary
 
 def nodes():
@@ -156,9 +156,9 @@ def services():
 
 def resource_usage():
     try:
-        cpu_ratio = instant(cq.CLUSTER_CPU_USAGE_5M["query"]) or 0
-        mem_ratio = instant(cq.CLUSTER_MEM_USAGE_CURRENT["query"]) or 0
-        disk_ratio = instant(cq.CLUSTER_DISK_USAGE_CURRENT["query"]) or 0
+        cpu_ratio = instant(cq.CLUSTER_CPU_USAGE_5M["query"])
+        mem_ratio = instant(cq.CLUSTER_MEM_USAGE_CURRENT["query"])
+        disk_ratio = instant(cq.CLUSTER_DISK_USAGE_CURRENT["query"])
 
     except Exception as exc:
         raise ApiException(
@@ -168,9 +168,9 @@ def resource_usage():
         ) from exc
 
     return {
-        "cpu_usage": round(cpu_ratio * 100, 2),
-        "memory_usage": round(mem_ratio * 100, 2),
-        "disk_usage": round(disk_ratio * 100, 2),
+        "cpu_usage": round(cpu_ratio * 100, 2) if cpu_ratio is not None else None,
+        "memory_usage": round(mem_ratio * 100, 2) if mem_ratio is not None else None,
+        "disk_usage": round(disk_ratio * 100, 2) if disk_ratio is not None else None,
     }
 
 def gpu_usage():
@@ -187,7 +187,7 @@ def gpu_usage():
         for key in GPU_KEY_MAP:
             cfg = getattr(gq, key)
             val = instant(cfg["query"])
-            results[GPU_KEY_MAP[key]] = round(val, 2) if val else 0.0
+            results[GPU_KEY_MAP[key]] = round(val, 2) if val is not None else None
     except Exception as exc:
         raise ApiException(
             message="Failed to fetch dashboard GPU usage",
@@ -266,12 +266,10 @@ def get_usage(resource_type):
         if ns in k8s_repo.system_ns:
             continue
 
-        total_usage = sum(
-            parse_usage(resource_type, c["usage"].get(resource_type, "0"))
-            for c in m.get("containers", [])
-        )
-
-        if total_usage <= 0:
+        total_usage = quantity_total(resource_type, (
+            (c.get("usage") or {}).get(resource_type) for c in m.get("containers", [])
+        ))
+        if total_usage is None or total_usage <= 0:
             continue
 
         pod_spec = k8s_repo.get_pod_resources(pod, ns)
@@ -280,8 +278,8 @@ def get_usage(resource_type):
         results.append({
             "pod_name": pod,
             f"{resource_type}_usage": to_display_value(resource_type, total_usage),
-            f"{resource_type}_limit": to_display_value(resource_type, resource_info["limit"]),
-            f"{resource_type}_request": to_display_value(resource_type, resource_info["request"]),
+            f"{resource_type}_limit": resource_info["limit"],
+            f"{resource_type}_request": resource_info["request"],
         })
 
     return sorted(
@@ -291,37 +289,17 @@ def get_usage(resource_type):
     )[:5]
 
 def calculate_resources(pod_spec, resource_type):
-    total_limit = 0
-    total_request = 0
-    init_limits = []
-    init_requests = []
+    def field(container, name):
+        return (getattr(container.resources, name, None) or {}).get(resource_type, "0")
 
-    for c in pod_spec.spec.containers:
-        total_limit += parse_usage(
-            resource_type, (c.resources.limits or {}).get(resource_type, "0")
-        )
-        total_request += parse_usage(
-            resource_type, (c.resources.requests or {}).get(resource_type, "0")
-        )
+    def amount(name):
+        total = quantity_total(resource_type, (field(c, name) for c in pod_spec.spec.containers))
+        initial = [quantity_total(resource_type, (field(c, name),)) for c in pod_spec.spec.init_containers or []]
+        if total is None or None in initial:
+            return None
+        return to_display_value(resource_type, max([total, *initial]))
 
-    if pod_spec.spec.init_containers:
-        for ic in pod_spec.spec.init_containers:
-            init_limits.append(
-                parse_usage(resource_type, (ic.resources.limits or {}).get(resource_type, "0"))
-            )
-            init_requests.append(
-                parse_usage(resource_type, (ic.resources.requests or {}).get(resource_type, "0"))
-            )
-
-        return {
-            "limit": max(total_limit, max(init_limits, default=0)),
-            "request": max(total_request, max(init_requests, default=0)),
-        }
-
-    return {
-        "limit": total_limit,
-        "request": total_request,
-    }
+    return {"limit": amount("limits"), "request": amount("requests")}
 
 def events():
     try:

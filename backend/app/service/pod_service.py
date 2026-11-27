@@ -277,9 +277,9 @@ def pod_list(namespace_name: str, node_name: str):
 
             age = format_relative_time(pod.metadata.creation_timestamp)
 
-            metric = pod_metric_map.get((pod_ns, pod_name), {"cpu": 0.0, "memory": 0.0})
-            cpu = metric["cpu"]
-            mem = metric["memory"]
+            metric = pod_metric_map.get((pod_ns, pod_name), {})
+            cpu = metric.get("cpu")
+            mem = metric.get("memory")
 
             pod_list.append(
                 {
@@ -290,7 +290,7 @@ def pod_list(namespace_name: str, node_name: str):
                     "restarts": restarts_str,
                     "age": age,
                     "cpu": cpu,
-                    "memory": format_bytes_iec(mem),
+                    "memory": format_bytes_iec(mem) if mem is not None else None,
                     "node": pod_node,
                 }
             )

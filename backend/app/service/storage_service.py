@@ -2,12 +2,16 @@ from http import HTTPStatus
 from typing import Optional
 from app.repository import k8s_repo
 from utils.parse_utils import format_bytes_si
-from utils.parse_utils import parse_resource_to_bytes
+from utils.parse_utils import quantity_total
 from utils.time_utils import format_relative_time, KST
 from utils.event_utils import build_event_summary
 from app.exceptions import ApiException
 
 NONE_DISPLAY = "-"
+
+def _storage_capacity(values):
+    total = quantity_total("memory", values)
+    return format_bytes_si(total, precision=1) if total is not None else None
 
 def namespace_list() -> dict:
     try:
@@ -34,7 +38,7 @@ def pvc_status(namespace_name: str) -> dict:
         pending = 0
         lost = 0
 
-        capacity_total = 0
+        capacities = []
 
         for pvc in pvcs:
             status = pvc.status
@@ -54,15 +58,14 @@ def pvc_status(namespace_name: str) -> dict:
 
             capacity = status.capacity or {}
             cap_storage = capacity.get("storage")
-            if cap_storage:
-                capacity_total += parse_resource_to_bytes(cap_storage)
+            capacities.append(cap_storage)
 
         return {
             "total_pvc": total,
             "bound": bound,
             "pending": pending,
             "lost": lost,
-            "capacity": format_bytes_si(capacity_total, precision=1),
+            "capacity": _storage_capacity(capacities),
 
         }
 
@@ -297,7 +300,7 @@ def pv_sc_status() -> dict:
         released = 0
         failed = 0
 
-        capacity_total = 0
+        capacities = []
 
         for pv in pvs:
             status = pv.status
@@ -317,8 +320,7 @@ def pv_sc_status() -> dict:
                 failed += 1
 
             cap_str = (spec.capacity or {}).get("storage")
-            if cap_str:
-                capacity_total += parse_resource_to_bytes(cap_str)
+            capacities.append(cap_str)
 
         return {
             "total_pv": total,
@@ -326,9 +328,7 @@ def pv_sc_status() -> dict:
             "bound": bound,
             "released": released,
             "failed": failed,
-            "capacity": format_bytes_si(
-                capacity_total, precision=1
-            ),
+            "capacity": _storage_capacity(capacities),
             "total_storageclass": len(scs),
         }
 

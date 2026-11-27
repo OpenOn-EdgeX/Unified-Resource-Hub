@@ -1,3 +1,6 @@
+import math
+
+
 def parse_usage(resource_type: str, value: str):
 
     if resource_type == "cpu":
@@ -14,35 +17,46 @@ _QUANTITY_SUFFIX = {
 
 _CPU_DIVISOR = {"n": 1e9, "u": 1e6, "m": 1e3}
 
+def _finite(value):
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("Expected a finite, nonnegative quantity")
+    return value
+
+
 def parse_cpu(value: str) -> float:
-
-    if not value or value == "0":
-        return 0.0
     value = str(value).strip()
-
     for suffix, divisor in _CPU_DIVISOR.items():
         if value.endswith(suffix):
-            return float(value[: -len(suffix)]) / divisor
+            return _finite(float(value[:-len(suffix)]) / divisor)
     for suffix, factor in _QUANTITY_SUFFIX.items():
         if value.endswith(suffix):
-            return float(value[: -len(suffix)]) * factor
+            return _finite(float(value[:-len(suffix)]) * factor)
+    return _finite(float(value))
 
-    return float(value)
 
 def parse_resource_to_bytes(value: str) -> int:
-
-    if not value:
-        return 0
-
     value = str(value).strip()
     for suffix, factor in _QUANTITY_SUFFIX.items():
         if value.endswith(suffix):
-            return int(float(value[: -len(suffix)]) * factor)
+            return int(_finite(float(value[:-len(suffix)]) * factor))
+    return int(_finite(float(value)))
 
+
+def add_quantities(left, right):
+    if left is None or right is None:
+        return None
     try:
-        return int(float(value))
-    except ValueError:
-        return 0
+        return _finite(left + right)
+    except (ValueError, OverflowError):
+        return None
+
+
+def quantity_total(resource, values):
+    try:
+        return _finite(sum(parse_usage(resource, value) for value in values))
+    except (ValueError, OverflowError):
+        return None
+
 
 def format_bytes_iec(value: float, precision: int = 2) -> str:
 
@@ -103,7 +117,7 @@ def to_display_value(resource_type: str, value):
 def format_number(value: float, precision: int = 3):
 
     rounded = round(value, precision)
-    return int(rounded) if rounded.is_integer() else rounded
+    return int(rounded) if isinstance(rounded, float) and rounded.is_integer() else rounded
 
 def format_bps(bytes_per_sec: float, precision: int = 1):
 

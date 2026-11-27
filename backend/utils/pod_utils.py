@@ -1,5 +1,4 @@
-from utils.parse_utils import parse_cpu
-from utils.parse_utils import parse_resource_to_bytes
+from utils.parse_utils import quantity_total
 
 DEFAULT_POD_INFO = {
     "status": "Unknown",
@@ -173,16 +172,11 @@ def build_pod_metric_map(metrics):
         md = m.get("metadata", {})
         pod_key = (md.get("namespace") or "", md.get("name") or "")
 
-        cpu = 0.0
-        memory = 0.0
-        for c in m.get("containers", []):
-            usage = c.get("usage", {})
-            cpu += parse_cpu(usage.get("cpu", "0"))
-            memory += parse_resource_to_bytes(usage.get("memory", "0"))
-
+        containers = m.get("containers") or []
         pod_metric_map[pod_key] = {
-            "cpu": cpu,
-            "memory": memory,
+            resource: quantity_total(resource, ((c.get("usage") or {}).get(resource) for c in containers))
+            if containers else None
+            for resource in ("cpu", "memory")
         }
 
     return pod_metric_map

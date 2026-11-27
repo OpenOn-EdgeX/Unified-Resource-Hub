@@ -34,6 +34,19 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.get_json(), {'total_nodes': 1, 'ready_nodes': 1, 'data': []})
 
+    def test_dashboard_distinguishes_missing_samples_from_zero(self):
+        cases = (
+            ('resource_usage', [None, 0.0, 0.2534],
+             {'cpu_usage': None, 'memory_usage': 0.0, 'disk_usage': 25.34}),
+            ('gpu_usage', [None, 0.0, 7.125, None],
+             {'Compute': None, 'Memory': 0.0, 'Encode': 7.12, 'Decode': None}),
+        )
+        for path, samples, expected in cases:
+            with self.subTest(path=path), patch('app.service.dashboard_service.instant', side_effect=samples):
+                response = self.client.get('/rest/1.0/dashboard/' + path)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.get_json(), expected)
+
     def test_native_sidecar_detection(self):
         payload = b'{"items":[{"metadata":{"uid":"x"},"spec":{"initContainers":[{"name":"agent","restartPolicy":"Always"},{"name":"setup"}]}}]}'
         self.assertEqual(k8s_repo._build_sidecar_lookup(payload), {'x': {'agent'}})
